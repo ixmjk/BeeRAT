@@ -25,8 +25,16 @@ class Client:
             except ValueError:
                 continue
 
+    def rename_file(self, file_name):
+        filename, extension = os.path.splitext(file_name)
+        counter = 1
+        while os.path.exists(file_name):
+            file_name = f'{filename} ({counter}){extension}'
+            counter += 1
+        return file_name
+
     def write_file(self, filename, content):
-        # filename = f'[upload {datetime.datetime.now()}] {filename}'
+        filename = self.rename_file(filename)
         with open(filename, 'wb') as file:
             file.write(base64.b64decode(content))
             return f'[+] {filename} downloaded successfully.'
