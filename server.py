@@ -19,9 +19,9 @@ class Server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind((self.ip, self.port))
         server.listen(0)
-        print(f'[+] [{self.get_time()}] [{self.ip}] listening...')
+        print(self.log(f'[+] [{self.get_time()}] [{self.ip}] listening...'))
         self.connection, self.address = server.accept()
-        print(f'[+] [{self.get_time()}] [{self.address[0]}] is authenticating.')
+        print(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] is authenticating.'))
 
     @staticmethod
     def execute_system_command(command):
@@ -39,6 +39,12 @@ class Server:
     def get_password():
         with open('BeeRAT-password.txt', 'r') as file:
             return file.read().strip()
+
+    @staticmethod
+    def log(log_message):
+        with open('BeeRAT-log.txt', 'a') as file:
+            file.write(log_message + '\n')
+        return log_message
 
     @staticmethod
     def get_time():
@@ -104,19 +110,20 @@ class Server:
         password_hash = hashlib.sha256(password.encode()).hexdigest()
         if password_hash == Server.get_password():
             self.send(True)
-            print(f'[+] [{self.get_time()}] [{self.address[0]}] connected.')
+            print(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] connected.'))
         else:
-            print(f'[-] [{self.get_time()}] [{self.address[0]}] authentication failed.')
+            print(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] authentication failed.'))
             self.send(False)
             self.run()
         while True:
             try:
                 command = self.recv().split(' ')
+                print(self.log(f"[-] [{self.get_time()}] [{self.address[0]}] command: {' '.join(command)}"))
                 if command[0] == 'exit':
-                    print(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.')
+                    print(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
                     self.__init__()
                     self.run()
-                elif command[0] == 'info' and len(command) == 1:
+                elif command[0] == 'prompt' and len(command) == 1:
                     self.send(f'{getpass.getuser()}@{socket.gethostname()}:{os.getcwd()}')
                 elif command[0] == 'pwd' and len(command) == 1:
                     self.send(self.pwd())
@@ -144,7 +151,7 @@ class Server:
                     command_result = self.execute_system_command(command)
                     self.send(command_result)
             except ConnectionResetError:
-                print(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.')
+                print(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
                 self.__init__()
                 self.run()
             except Exception as e:
@@ -167,12 +174,13 @@ def main():
                 password = ' '.join(command[1:])
                 if len(password) >= 8:
                     Server.set_password(password)
-                    print('[+] Password set successfully.')
+                    print('[+] Password saved successfully.')
                 else:
                     print('[-] password must be at least 8 characters long.')
             elif command[0] == 'start':
                 Server.clear()
                 print('[+] Press ctrl+c or ctrl+break to stop the server.')
+                Server.log(f'[{Server.get_time()}] server started.')
                 my_server = Server()
                 my_server.run()
             else:

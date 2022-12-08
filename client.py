@@ -63,7 +63,7 @@ class Client:
             self.run()
         while True:
             try:
-                self.send('info')
+                self.send('prompt')
                 info = self.recv()
                 command = input(f'{info}$ ').split(' ')
                 if command[0] == 'exit':
@@ -97,7 +97,7 @@ class Client:
                     if len(password) >= 8:
                         self.send(' '.join(command))
                         if self.recv():
-                            print('[+] Password set successfully.')
+                            print('[+] Password saved successfully.')
                     else:
                         print('[-] password must be at least 8 characters long.')
                 else:
