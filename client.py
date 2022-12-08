@@ -59,7 +59,7 @@ class Client:
             try:
                 self.send('info')
                 info = self.recv()
-                command = input(f'{info}# ').split(' ')
+                command = input(f'{info}$ ').split(' ')
                 if command[0] == 'exit':
                     self.send('exit')
                     main()
@@ -91,6 +91,9 @@ class Client:
                     self.send(command)
                     result = self.recv()
                     print(result)
+            except ConnectionResetError:
+                print('[-] Server disconnected.')
+                main()
             except Exception as e:
                 print(str(e))
             except KeyboardInterrupt:
@@ -98,12 +101,15 @@ class Client:
 
 
 def main():
-    Client.clear()
     while True:
         try:
             command = input('BeeRAT-Client$ ').split(' ')
             if command[0] == 'help' and len(command) == 1:
                 print('[+] connect ip')
+            elif command[0] == 'clear' and len(command) == 1:
+                Client.clear()
+            elif command[0] == 'exit' and len(command) == 1:
+                exit()
             elif command[0] == 'connect':
                 ip = command[1]
                 my_client = Client(ip)
