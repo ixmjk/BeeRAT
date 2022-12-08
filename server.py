@@ -4,6 +4,8 @@ import json
 import os
 import base64
 import getpass
+import hashlib
+import datetime
 
 
 FORMAT = 'utf-8'
@@ -17,15 +19,30 @@ class Server:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind((self.ip, self.port))
         server.listen(0)
-        print('[+] Press ctrl+c or ctrl+break to stop the server.')
-        print(f'[+] {self.ip}:{self.port} Listening...')
+        print(f'[+] [{self.get_time()}] [{self.ip}] listening...')
         self.connection, self.address = server.accept()
-        print(f'[+] {self.address[0]}:{self.address[1]} connected.')
+        print(f'[+] [{self.get_time()}] [{self.address[0]}] is authenticating.')
 
     @staticmethod
     def execute_system_command(command):
         result = subprocess.getoutput(command)
         return result
+
+    @staticmethod
+    def set_password(password):
+        hash_object = hashlib.sha256(password.encode())
+        password_hash = hash_object.hexdigest()
+        with open('BeeRAT-password.txt', 'w') as file:
+            file.write(password_hash)
+
+    @staticmethod
+    def get_password():
+        with open('BeeRAT-password.txt', 'r') as file:
+            return file.read().strip()
+
+    @staticmethod
+    def get_time():
+        return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     def send(self, data):
         json_data = json.dumps(data)
@@ -83,12 +100,22 @@ class Server:
         return False
 
     def run(self):
+        password = self.recv()
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        if password_hash == Server.get_password():
+            self.send(True)
+            print(f'[+] [{self.get_time()}] [{self.address[0]}] connected.')
+        else:
+            print(f'[-] [{self.get_time()}] [{self.address[0]}] authentication failed.')
+            self.send(False)
+            self.run()
         while True:
             try:
                 command = self.recv().split(' ')
                 if command[0] == 'exit':
-                    print(f'[-] {self.address[0]}:{self.address[1]} disconnected.')
+                    print(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.')
                     self.__init__()
+                    self.run()
                 elif command[0] == 'info' and len(command) == 1:
                     self.send(f'{getpass.getuser()}@{socket.gethostname()}:{os.getcwd()}')
                 elif command[0] == 'pwd' and len(command) == 1:
@@ -108,28 +135,44 @@ class Server:
                     file_name = ' '.join(command[1:])
                     file_content = self.recv().encode(FORMAT)
                     self.send(self.write_file(file_name, file_content))
+                elif command[0] == 'change-password':
+                    password = ' '.join(command[1:])
+                    self.set_password(password)
+                    self.send(True)
                 else:
                     command = ' '.join(command)
                     command_result = self.execute_system_command(command)
                     self.send(command_result)
             except ConnectionResetError:
-                print(f'[-] {self.address[0]}:{self.address[1]} disconnected.')
+                print(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.')
                 self.__init__()
+                self.run()
             except Exception as e:
                 self.send(str(e))
 
 
 def main():
+    if 'BeeRAT-password.txt' not in os.listdir(os.path.dirname(__file__)):
+        Server.set_password('password')
     while True:
         try:
             command = input('BeeRAT-Server$ ').split(' ')
             if command[0] == 'help' and len(command) == 1:
-                print('[+] start')
+                print('Commands:\n\t\thelp\n\t\tclear\n\t\tchange-password\n\t\tstart\n')
             elif command[0] == 'clear' and len(command) == 1:
                 Server.clear()
             elif command[0] == 'exit' and len(command) == 1:
                 exit()
+            elif command[0] == 'change-password':
+                password = ' '.join(command[1:])
+                if len(password) >= 8:
+                    Server.set_password(password)
+                    print('[+] Password set successfully.')
+                else:
+                    print('[-] password must be at least 8 characters long.')
             elif command[0] == 'start':
+                Server.clear()
+                print('[+] Press ctrl+c or ctrl+break to stop the server.')
                 my_server = Server()
                 my_server.run()
             else:
