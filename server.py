@@ -12,7 +12,7 @@ FORMAT = 'utf-8'
 class Server:
     def __init__(self) -> None:
         self.ip = socket.gethostbyname(socket.gethostname())
-        self.port = 4444
+        self.port = 55555
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind((self.ip, self.port))
