@@ -11,17 +11,22 @@ import datetime
 FORMAT = 'utf-8'
 
 
+class RestartServer(Exception):
+    pass
+
+
 class Server:
-    def __init__(self) -> None:
-        self.ip = socket.gethostbyname(socket.gethostname())
-        self.port = 55555
+
+    def listen(self):
+        ip = socket.gethostbyname(socket.gethostname())
+        port = 55555
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server.bind((self.ip, self.port))
+        server.bind((ip, port))
         server.listen(0)
-        print(self.log(f'[+] [{self.get_time()}] [{self.ip}] listening...'))
-        self.connection, self.address = server.accept()
-        print(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] is authenticating.'))
+        print(self.log(f'[+] [{self.get_time()}] [{ip}] listening...'))
+        connection, address = server.accept()
+        return connection, address
 
     @staticmethod
     def execute_system_command(command):
@@ -105,24 +110,28 @@ class Server:
             return True
         return False
 
-    def run(self):
-        password = self.recv()
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
-        if password_hash == Server.get_password():
-            self.send(True)
-            print(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] connected.'))
-        else:
-            print(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] authentication failed.'))
-            self.send(False)
-            self.run()
-        while True:
-            try:
+    def start(self):
+        try:
+            self.connection, self.address = self.listen()
+            print(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] is authenticating.'))
+            password = self.recv()
+            if password is None:
+                raise RestartServer
+            password_hash = hashlib.sha256(password.encode()).hexdigest()
+            if password_hash == Server.get_password():
+                self.send(True)
+                print(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] connected.'))
+            else:
+                print(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] authentication failed.'))
+                self.send(False)
+                raise RestartServer
+            while True:
                 command = self.recv().split(' ')
-                print(self.log(f"[-] [{self.get_time()}] [{self.address[0]}] command: {' '.join(command)}"))
+                print(
+                    self.log(f"[-] [{self.get_time()}] [{self.address[0]}] command: {' '.join(command)}"))
                 if command[0] == 'exit':
                     print(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
-                    self.__init__()
-                    self.run()
+                    raise RestartServer
                 elif command[0] == 'prompt' and len(command) == 1:
                     self.send(f'{getpass.getuser()}@{socket.gethostname()}:{os.getcwd()}')
                 elif command[0] == 'pwd' and len(command) == 1:
@@ -150,12 +159,13 @@ class Server:
                     command = ' '.join(command)
                     command_result = self.execute_system_command(command)
                     self.send(command_result)
-            except ConnectionResetError:
-                print(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
-                self.__init__()
-                self.run()
-            except Exception as e:
-                self.send(str(e))
+        except ConnectionResetError:
+            print(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
+            raise RestartServer
+        except RestartServer:
+            self.run()
+        except Exception as e:
+            self.send(str(e))
 
 
 def main():
@@ -182,7 +192,7 @@ def main():
                 print('[+] Press ctrl+c or ctrl+break to stop the server.')
                 Server.log(f'[{Server.get_time()}] server started.')
                 my_server = Server()
-                my_server.run()
+                my_server.start()
             else:
                 print('[-] Unknown command.')
         except (KeyboardInterrupt, EOFError):
