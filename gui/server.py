@@ -34,7 +34,7 @@ class Server(qtw.QWidget):
         password, done = qtw.QInputDialog.getText(self, 'Password', 'Enter your password:', qtw.QLineEdit.Password)
         if done:
             if len(password) >= 8:
-                WorkerThread.set_password(password)
+                ServerThread().set_password(password)
                 qtw.QMessageBox.information(self, 'Password', 'Password saved successfully.')
             else:
                 qtw.QMessageBox.warning(self, 'Password', 'Password must be at least 8 characters long.')
@@ -48,26 +48,20 @@ class Server(qtw.QWidget):
     def start_thread(self):
         self.ui.pb1.setEnabled(False)
         self.ui.pb3.setEnabled(False)
-        self.print(WorkerThread.log(f'[{WorkerThread.get_time()}] server started.'))
-        self.worker = WorkerThread()
+        self.print(ServerThread().log(f'[{ServerThread().get_time()}] server started.'))
+        self.worker = ServerThread()
         self.worker.start()
         self.worker.log_message.connect(self.print)
 
 
-class WorkerThread(QThread):
+class ServerThread(QThread):
 
     log_message = pyqtSignal(str)
 
-    def listen(self):
-        ip = socket.gethostbyname(socket.gethostname())
-        port = 55555
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server.bind((ip, port))
-        server.listen(0)
-        self.log_message.emit(self.log(f'[+] [{self.get_time()}] [{ip}] listening...'))
-        connection, address = server.accept()
-        return connection, address
+    def __init__(self, parent=None) -> None:
+        super(ServerThread, self).__init__(parent)
+        self.password_file = os.path.join(os.path.dirname(__file__), 'BeeRAT-password.txt')
+        self.log_file = os.path.join(os.path.dirname(__file__), 'BeeRAT-log.txt')
 
     def run(self) -> None:
         try:
@@ -77,7 +71,7 @@ class WorkerThread(QThread):
             if password is None:
                 raise RestartServer
             password_hash = hashlib.sha256(password.encode()).hexdigest()
-            if password_hash == WorkerThread.get_password():
+            if password_hash == self.get_password():
                 self.send(True)
                 self.log_message.emit(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] connected.'))
             else:
@@ -126,20 +120,16 @@ class WorkerThread(QThread):
         except Exception as e:
             self.send(str(e))
 
-    @ staticmethod
-    def log(log_message):
-        with open('BeeRAT-log.txt', 'a') as file:
-            file.write(log_message + '\n')
-        return log_message
-
-    @ staticmethod
-    def get_time():
-        return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-    @ staticmethod
-    def get_password():
-        with open(os.path.join(os.path.dirname(__file__), 'BeeRAT-password.txt'), 'r') as file:
-            return file.read().strip()
+    def listen(self):
+        ip = socket.gethostbyname(socket.gethostname())
+        port = 55555
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind((ip, port))
+        server.listen(0)
+        self.log_message.emit(self.log(f'[+] [{self.get_time()}] [{ip}] listening...'))
+        connection, address = server.accept()
+        return connection, address
 
     def send(self, data):
         json_data = json.dumps(data)
@@ -154,6 +144,15 @@ class WorkerThread(QThread):
             except ValueError:
                 continue
 
+    @staticmethod
+    def execute_system_command(command):
+        result = subprocess.getoutput(command)
+        return result
+
+    @staticmethod
+    def clear():
+        return os.system('cls' if os.name == 'nt' else 'clear')
+
     def pwd(self):
         return os.getcwd()
 
@@ -167,16 +166,34 @@ class WorkerThread(QThread):
     def ls(self):
         return '  '.join(os.listdir())
 
+    @staticmethod
+    def get_time():
+        return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    def set_password(self, password):
+        hash_object = hashlib.sha256(password.encode())
+        password_hash = hash_object.hexdigest()
+        with open(self.password_file, 'w') as file:
+            file.write(password_hash)
+
+    def get_password(self):
+        with open(self.password_file, 'r') as file:
+            return file.read().strip()
+
+    def log(self, log_message):
+        with open(self.log_file, 'a') as file:
+            file.write(log_message + '\n')
+        return log_message
+
     def read_file(self, path):
         with open(path, 'rb') as file:
             return base64.b64encode(file.read()).decode(FORMAT)
 
-    def downloadable(self, file_path):
-        if os.path.isfile(file_path):
-            return True
-        if os.path.isfile(os.path.join(os.path.dirname(__file__), file_path)):
-            return True
-        return False
+    def write_file(self, filename, content):
+        filename = self.rename_file(filename)
+        with open(filename, 'wb') as file:
+            file.write(base64.b64decode(content))
+            return f'[+] {filename} uploaded successfully.'
 
     def rename_file(self, file_name):
         filename, extension = os.path.splitext(file_name)
@@ -186,33 +203,17 @@ class WorkerThread(QThread):
             counter += 1
         return file_name
 
-    def write_file(self, filename, content):
-        filename = self.rename_file(filename)
-        with open(filename, 'wb') as file:
-            file.write(base64.b64decode(content))
-            return f'[+] {filename} uploaded successfully.'
-
-    @ staticmethod
-    def set_password(password):
-        hash_object = hashlib.sha256(password.encode())
-        password_hash = hash_object.hexdigest()
-        with open(os.path.join(os.path.dirname(__file__), 'BeeRAT-password.txt'), 'w') as file:
-            file.write(password_hash)
-
-    @ staticmethod
-    def get_password():
-        with open(os.path.join(os.path.dirname(__file__), 'BeeRAT-password.txt'), 'r') as file:
-            return file.read().strip()
-
-    @ staticmethod
-    def execute_system_command(command):
-        result = subprocess.getoutput(command)
-        return result
+    def downloadable(self, file_path):
+        if os.path.isfile(file_path):
+            return True
+        if os.path.isfile(os.path.join(os.path.dirname(__file__), file_path)):
+            return True
+        return False
 
 
 def main():
     if 'BeeRAT-password.txt' not in os.listdir(os.path.dirname(__file__)):
-        WorkerThread.set_password('password')
+        ServerThread().set_password('password')
     app = qtw.QApplication([])
     widget = Server()
     widget.show()
