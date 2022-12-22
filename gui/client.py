@@ -1,12 +1,14 @@
-from PyQt5.uic import loadUi
-from PyQt5 import QtWidgets as qtw
-from PyQt5 import QtTest
-from lineedit import QLineEdit
-import socket
+import base64
 import json
 import os
+import socket
 import sys
-import base64
+
+from PyQt5 import QtTest
+from PyQt5 import QtWidgets as qtw
+from PyQt5.uic import loadUi
+
+from lineedit import QLineEdit
 
 
 FORMAT = 'utf-8'
@@ -22,12 +24,7 @@ class Client(qtw.QWidget):
         self.ui.le.setEnabled(False)
 
     def closeEvent(self, event) -> None:
-        try:
-            self.send('exit')
-        except Exception:
-            pass
-        finally:
-            sys.exit()
+        sys.exit()
 
     def clear(self):
         self.ui.tb.clear()

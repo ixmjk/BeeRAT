@@ -114,7 +114,7 @@ class ServerThread(QThread):
                     self.send(command_result)
         except ConnectionResetError:
             self.log_message.emit(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
-            raise RestartServer
+            self.run()
         except RestartServer:
             self.run()
         except Exception as e:

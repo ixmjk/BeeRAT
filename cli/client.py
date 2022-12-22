@@ -7,6 +7,10 @@ import base64
 FORMAT = 'utf-8'
 
 
+class IncorrectPassword(Exception):
+    pass
+
+
 class Client:
     def __init__(self, ip) -> None:
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -60,12 +64,13 @@ class Client:
         result = self.recv()
         if not result:
             print('[-] Password is incorrect.')
-            self.run()
+            self.send(None)
+            raise IncorrectPassword
         while True:
             try:
                 self.send('prompt')
                 info = self.recv()
-                command = input(f'{info}$ ').split(' ')
+                command = input(f'\n{info}$ ').split(' ')
                 if command[0] == 'exit':
                     self.send('exit')
                     main()
@@ -134,6 +139,8 @@ def main():
             print('[-] Connection failed.')
         except (KeyboardInterrupt, EOFError):
             exit()
+        except IncorrectPassword:
+            pass
         except Exception as e:
             print('[-] Invalid ip.')
 
