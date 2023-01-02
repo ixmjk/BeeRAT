@@ -1,11 +1,11 @@
-import socket
-import subprocess
-import json
-import os
 import base64
+import datetime
 import getpass
 import hashlib
-import datetime
+import json
+import os
+import socket
+import subprocess
 
 
 FORMAT = 'utf-8'
@@ -16,16 +16,23 @@ class RestartServer(Exception):
 
 
 class Server:
-
     def __init__(self) -> None:
-        self.password_file = os.path.join(os.path.dirname(__file__), 'BeeRAT-password.txt')
-        self.log_file = os.path.join(os.path.dirname(__file__), 'BeeRAT-log.txt')
+        self.script_location = os.path.dirname(__file__)
+        self.password_file = os.path.join(self.script_location, 'BeeRAT-password.txt')
+        self.log_file = os.path.join(self.script_location, 'BeeRAT-log.txt')
 
     def start(self):
-        if 'BeeRAT-password.txt' not in os.listdir(os.path.dirname(__file__)):
+        self.clear()
+        print('[+] Press ctrl+c or ctrl+break to stop the server.')
+        self.log(f'[{self.get_time()}] server started.')
+        if 'BeeRAT-password.txt' not in os.listdir(self.script_location):
             self.set_password('password')
+        self.run()
+
+    def run(self):
         try:
             self.connection, self.address = self.listen()
+            self.connection.settimeout(300)
             print(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] is authenticating.'))
             password = self.recv()
             if password is None:
@@ -62,7 +69,7 @@ class Server:
                     self.send(self.downloadable(file_path))
                 elif command[0] == 'upload' and len(command) > 1:
                     file_name = ' '.join(command[1:])
-                    file_content = self.recv().encode(FORMAT)
+                    file_content = self.recv()
                     self.send(self.write_file(file_name, file_content))
                 elif command[0] == 'change-password':
                     password = ' '.join(command[1:])
@@ -74,9 +81,9 @@ class Server:
                     self.send(command_result)
         except ConnectionResetError:
             print(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
-            self.start()
-        except RestartServer:
-            self.start()
+            self.run()
+        except (RestartServer, TimeoutError):
+            self.run()
         except Exception as e:
             print(f'!!! {str(e)} !!!')
             self.send(str(e))
@@ -151,6 +158,7 @@ class Server:
             return base64.b64encode(file.read()).decode(FORMAT)
 
     def write_file(self, filename, content):
+        content = content.encode(FORMAT)
         filename = self.rename_file(filename)
         with open(filename, 'wb') as file:
             file.write(base64.b64decode(content))
@@ -190,11 +198,8 @@ def main():
                 else:
                     print('[-] password must be at least 8 characters long.')
             elif command[0] == 'start':
-                Server.clear()
-                print('[+] Press ctrl+c or ctrl+break to stop the server.')
-                my_server = Server()
-                my_server.log(f'[{Server.get_time()}] server started.')
-                my_server.start()
+                server = Server()
+                server.start()
             else:
                 print('[-] Unknown command.')
         except (KeyboardInterrupt, EOFError):

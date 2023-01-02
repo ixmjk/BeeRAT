@@ -1,7 +1,8 @@
-import socket
+import base64
+import getpass
 import json
 import os
-import base64
+import socket
 
 
 FORMAT = 'utf-8'
@@ -13,64 +14,16 @@ class IncorrectPassword(Exception):
 
 class Client:
     def __init__(self, ip) -> None:
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client.connect((ip, 55555))
-
-    def send(self, data):
-        json_data = json.dumps(data)
-        self.client.send(json_data.encode(FORMAT))
-
-    def recv(self):
-        json_data = ''
-        while True:
-            try:
-                json_data = json_data + self.client.recv(1024).decode(FORMAT)
-                return json.loads(json_data)
-            except ValueError:
-                continue
-
-    @staticmethod
-    def clear():
-        return os.system('cls' if os.name == 'nt' else 'clear')
-
-    def rename_file(self, file_name):
-        filename, extension = os.path.splitext(file_name)
-        counter = 1
-        while os.path.exists(file_name):
-            file_name = f'{filename} ({counter}){extension}'
-            counter += 1
-        return file_name
-
-    def write_file(self, filename, content):
-        filename = self.rename_file(filename)
-        with open(filename, 'wb') as file:
-            file.write(base64.b64decode(content))
-            return f'[+] {filename} downloaded successfully.'
-
-    def read_file(self, path):
-        with open(path, 'rb') as file:
-            return base64.b64encode(file.read()).decode(FORMAT)
-
-    def uploadable(self, file_path):
-        if os.path.isfile(file_path):
-            return True
-        if os.path.isfile(os.path.join(os.path.dirname(__file__), file_path)):
-            return True
-        return False
+        self.ip = ip
 
     def run(self):
-        password = input('Password: ')
-        self.send(password)
-        result = self.recv()
-        if not result:
-            print('[-] Password is incorrect.')
-            self.send(None)
-            raise IncorrectPassword
+        self.authenticate()
         while True:
             try:
+                print(self.client.gettimeout())
                 self.send('prompt')
                 info = self.recv()
-                command = input(f'\n{info}$ ').split(' ')
+                command = input(f'{info}$ ').split(' ')
                 if command[0] == 'exit':
                     self.send('exit')
                     main()
@@ -83,7 +36,7 @@ class Client:
                     if downloadable:
                         file_name = os.path.basename(file_path)
                         self.send(' '.join(command))
-                        file_content = self.recv().encode(FORMAT)
+                        file_content = self.recv()
                         print(self.write_file(file_name, file_content))
                     else:
                         print(f'download: {file_path}: Not downloadable')
@@ -118,6 +71,62 @@ class Client:
             except KeyboardInterrupt:
                 pass
 
+    def authenticate(self):
+        password = getpass.getpass('Password: ')
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.settimeout(3)
+        self.client.connect((self.ip, 55555))
+        self.client.settimeout(None)
+        self.send(password)
+        result = self.recv()
+        if not result:
+            self.send(None)
+            raise IncorrectPassword
+        print('[+] Connected.')
+
+    def send(self, data):
+        json_data = json.dumps(data)
+        self.client.send(json_data.encode(FORMAT))
+
+    def recv(self):
+        json_data = ''
+        while True:
+            try:
+                json_data = json_data + self.client.recv(1024).decode(FORMAT)
+                return json.loads(json_data)
+            except ValueError:
+                continue
+
+    @staticmethod
+    def clear():
+        return os.system('cls' if os.name == 'nt' else 'clear')
+
+    def rename_file(self, file_name):
+        filename, extension = os.path.splitext(file_name)
+        counter = 1
+        while os.path.exists(file_name):
+            file_name = f'{filename} ({counter}){extension}'
+            counter += 1
+        return file_name
+
+    def write_file(self, filename, content):
+        content = content.encode(FORMAT)
+        filename = self.rename_file(filename)
+        with open(filename, 'wb') as file:
+            file.write(base64.b64decode(content))
+            return f'[+] {filename} downloaded successfully.'
+
+    def read_file(self, path):
+        with open(path, 'rb') as file:
+            return base64.b64encode(file.read()).decode(FORMAT)
+
+    def uploadable(self, file_path):
+        if os.path.isfile(file_path):
+            return True
+        if os.path.isfile(os.path.join(os.path.dirname(__file__), file_path)):
+            return True
+        return False
+
 
 def main():
     while True:
@@ -131,8 +140,8 @@ def main():
                 exit()
             elif command[0] == 'connect':
                 ip = command[1]
-                my_client = Client(ip)
-                my_client.run()
+                client = Client(ip)
+                client.run()
             else:
                 print('[-] Unknown command.')
         except (ConnectionRefusedError, TimeoutError):
@@ -140,7 +149,7 @@ def main():
         except (KeyboardInterrupt, EOFError):
             exit()
         except IncorrectPassword:
-            pass
+            print('[-] Password is incorrect.')
         except Exception as e:
             print('[-] Invalid ip.')
 

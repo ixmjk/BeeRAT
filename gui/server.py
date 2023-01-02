@@ -6,7 +6,6 @@ import json
 import os
 import socket
 import subprocess
-
 from PyQt5 import QtWidgets as qtw
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.uic import loadUi
@@ -30,15 +29,6 @@ class Server(qtw.QWidget):
     def closeEvent(self, event) -> None:
         os._exit(0)
 
-    def change_password(self):
-        password, done = qtw.QInputDialog.getText(self, 'Password', 'Enter your password:', qtw.QLineEdit.Password)
-        if done:
-            if len(password) >= 8:
-                ServerThread().set_password(password)
-                qtw.QMessageBox.information(self, 'Password', 'Password saved successfully.')
-            else:
-                qtw.QMessageBox.warning(self, 'Password', 'Password must be at least 8 characters long.')
-
     def clear(self):
         self.ui.tb.clear()
 
@@ -49,9 +39,18 @@ class Server(qtw.QWidget):
         self.ui.pb1.setEnabled(False)
         self.ui.pb3.setEnabled(False)
         self.print(ServerThread().log(f'[{ServerThread().get_time()}] server started.'))
-        self.worker = ServerThread()
-        self.worker.start()
-        self.worker.log_message.connect(self.print)
+        self.server_thread = ServerThread()
+        self.server_thread.start()
+        self.server_thread.log_message.connect(self.print)
+
+    def change_password(self):
+        password, done = qtw.QInputDialog.getText(self, 'Password', 'Enter your password:', qtw.QLineEdit.Password)
+        if done:
+            if len(password) >= 8:
+                ServerThread().set_password(password)
+                qtw.QMessageBox.information(self, 'Password', 'Password saved successfully.')
+            else:
+                qtw.QMessageBox.warning(self, 'Password', 'Password must be at least 8 characters long.')
 
 
 class ServerThread(QThread):
@@ -60,12 +59,16 @@ class ServerThread(QThread):
 
     def __init__(self, parent=None) -> None:
         super(ServerThread, self).__init__(parent)
+        self.script_location = os.path.dirname(__file__)
         self.password_file = os.path.join(os.path.dirname(__file__), 'BeeRAT-password.txt')
         self.log_file = os.path.join(os.path.dirname(__file__), 'BeeRAT-log.txt')
 
     def run(self) -> None:
+        if 'BeeRAT-password.txt' not in os.listdir(self.script_location):
+            self.set_password('password')
         try:
             self.connection, self.address = self.listen()
+            self.connection.settimeout(300)
             self.log_message.emit(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] is authenticating.'))
             password = self.recv()
             if password is None:
@@ -82,33 +85,33 @@ class ServerThread(QThread):
                 command = self.recv().split(' ')
                 self.log_message.emit(
                     self.log(f"[-] [{self.get_time()}] [{self.address[0]}] command: {' '.join(command)}"))
-                if command[0] == 'exit':
+                if command[0] == 'exit':  # 10
                     self.log_message.emit(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
                     raise RestartServer
-                elif command[0] == 'prompt' and len(command) == 1:
+                elif command[0] == 'prompt' and len(command) == 1:  # 9
                     self.send(f'{getpass.getuser()}@{socket.gethostname()}:{os.getcwd()}')
-                elif command[0] == 'pwd' and len(command) == 1:
+                elif command[0] == 'pwd' and len(command) == 1:  # 8
                     self.send(self.pwd())
-                elif command[0] == 'cd' and len(command) > 1:
+                elif command[0] == 'cd' and len(command) > 1:  # 7
                     self.send(self.cd(' '.join(command[1:])))
-                elif command[0] == 'ls' and len(command) == 1:
+                elif command[0] == 'ls' and len(command) == 1:  # 6
                     self.send(self.ls())
-                elif command[0] == 'download' and len(command) > 1:
+                elif command[0] == 'download' and len(command) > 1:  # 5
                     file_path = ' '.join(command[1:])
                     file_content = self.read_file(file_path)
                     self.send(file_content)
-                elif command[0] == 'downloadable' and len(command) > 1:
+                elif command[0] == 'downloadable' and len(command) > 1:  # 4
                     file_path = ' '.join(command[1:])
                     self.send(self.downloadable(file_path))
-                elif command[0] == 'upload' and len(command) > 1:
+                elif command[0] == 'upload' and len(command) > 1:  # 3
                     file_name = ' '.join(command[1:])
-                    file_content = self.recv().encode(FORMAT)
+                    file_content = self.recv()
                     self.send(self.write_file(file_name, file_content))
-                elif command[0] == 'change-password':
+                elif command[0] == 'change-password':  # 2
                     password = ' '.join(command[1:])
                     self.set_password(password)
                     self.send(True)
-                else:
+                else:  # 1
                     command = ' '.join(command)
                     command_result = self.execute_system_command(command)
                     self.send(command_result)
@@ -190,6 +193,7 @@ class ServerThread(QThread):
             return base64.b64encode(file.read()).decode(FORMAT)
 
     def write_file(self, filename, content):
+        content = content.encode(FORMAT)
         filename = self.rename_file(filename)
         with open(filename, 'wb') as file:
             file.write(base64.b64decode(content))
@@ -212,8 +216,6 @@ class ServerThread(QThread):
 
 
 def main():
-    if 'BeeRAT-password.txt' not in os.listdir(os.path.dirname(__file__)):
-        ServerThread().set_password('password')
     app = qtw.QApplication([])
     widget = Server()
     widget.show()
