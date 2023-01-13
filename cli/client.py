@@ -4,7 +4,6 @@ import json
 import os
 import socket
 
-
 FORMAT = 'utf-8'
 
 
@@ -20,7 +19,6 @@ class Client:
         self.authenticate()
         while True:
             try:
-                print(self.client.gettimeout())
                 self.send('prompt')
                 info = self.recv()
                 command = input(f'{info}$ ').split(' ')
@@ -101,7 +99,8 @@ class Client:
     def clear():
         return os.system('cls' if os.name == 'nt' else 'clear')
 
-    def rename_file(self, file_name):
+    @staticmethod
+    def rename_file(file_name):
         filename, extension = os.path.splitext(file_name)
         counter = 1
         while os.path.exists(file_name):
@@ -116,11 +115,13 @@ class Client:
             file.write(base64.b64decode(content))
             return f'[+] {filename} downloaded successfully.'
 
-    def read_file(self, path):
+    @staticmethod
+    def read_file(path):
         with open(path, 'rb') as file:
             return base64.b64encode(file.read()).decode(FORMAT)
 
-    def uploadable(self, file_path):
+    @staticmethod
+    def uploadable(file_path):
         if os.path.isfile(file_path):
             return True
         if os.path.isfile(os.path.join(os.path.dirname(__file__), file_path)):

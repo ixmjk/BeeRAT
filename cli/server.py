@@ -7,7 +7,6 @@ import os
 import socket
 import subprocess
 
-
 FORMAT = 'utf-8'
 
 
@@ -47,8 +46,7 @@ class Server:
                 raise RestartServer
             while True:
                 command = self.recv().split(' ')
-                print(
-                    self.log(f"[-] [{self.get_time()}] [{self.address[0]}] command: {' '.join(command)}"))
+                print(self.log(f"[-] [{self.get_time()}] [{self.address[0]}] command: {' '.join(command)}"))
                 if command[0] == 'exit':
                     print(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
                     raise RestartServer
@@ -121,17 +119,20 @@ class Server:
     def clear():
         return os.system('cls' if os.name == 'nt' else 'clear')
 
-    def pwd(self):
+    @staticmethod
+    def pwd():
         return os.getcwd()
 
-    def cd(self, path):
+    @staticmethod
+    def cd(path):
         try:
             os.chdir(path)
             return ''
         except FileNotFoundError:
             return f'cd: {path}: No such file or directory'
 
-    def ls(self):
+    @staticmethod
+    def ls():
         return '  '.join(os.listdir())
 
     @staticmethod
@@ -153,7 +154,8 @@ class Server:
             file.write(log_message + '\n')
         return log_message
 
-    def read_file(self, path):
+    @staticmethod
+    def read_file(path):
         with open(path, 'rb') as file:
             return base64.b64encode(file.read()).decode(FORMAT)
 
@@ -164,7 +166,8 @@ class Server:
             file.write(base64.b64decode(content))
             return f'[+] {filename} uploaded successfully.'
 
-    def rename_file(self, file_name):
+    @staticmethod
+    def rename_file(file_name):
         filename, extension = os.path.splitext(file_name)
         counter = 1
         while os.path.exists(file_name):
@@ -172,7 +175,8 @@ class Server:
             counter += 1
         return file_name
 
-    def downloadable(self, file_path):
+    @staticmethod
+    def downloadable(file_path):
         if os.path.isfile(file_path):
             return True
         if os.path.isfile(os.path.join(os.path.dirname(__file__), file_path)):
@@ -185,7 +189,7 @@ def main():
         try:
             command = input('BeeRAT-Server$ ').split(' ')
             if command[0] == 'help' and len(command) == 1:
-                print('Commands:\n\t\thelp\n\t\tclear\n\t\tchange-password\n\t\tstart\n')
+                print('Commands:\n\t\thelp\n\t\tclear\n\t\tchange-password\n\t\tstart\n\t\texit\n')
             elif command[0] == 'clear' and len(command) == 1:
                 Server.clear()
             elif command[0] == 'exit' and len(command) == 1:

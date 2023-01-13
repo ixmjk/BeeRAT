@@ -10,7 +10,6 @@ from PyQt5 import QtWidgets as qtw
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.uic import loadUi
 
-
 FORMAT = 'utf-8'
 
 
@@ -29,19 +28,13 @@ class Server(qtw.QWidget):
     def closeEvent(self, event) -> None:
         os._exit(0)
 
-    def clear(self):
-        self.ui.tb.clear()
-
-    def print(self, text):
-        self.ui.tb.append(text)
-
     def start_thread(self):
         self.ui.pb1.setEnabled(False)
         self.ui.pb3.setEnabled(False)
-        self.print(ServerThread().log(f'[{ServerThread().get_time()}] server started.'))
+        self.ui.tb.append(ServerThread().log(f'[{ServerThread().get_time()}] server started.'))
         self.server_thread = ServerThread()
         self.server_thread.start()
-        self.server_thread.log_message.connect(self.print)
+        self.server_thread.log_signal.connect(lambda text: self.ui.tb.append(text))
 
     def change_password(self):
         password, done = qtw.QInputDialog.getText(self, 'Password', 'Enter your password:', qtw.QLineEdit.Password)
@@ -54,8 +47,7 @@ class Server(qtw.QWidget):
 
 
 class ServerThread(QThread):
-
-    log_message = pyqtSignal(str)
+    log_signal = pyqtSignal(str)
 
     def __init__(self, parent=None) -> None:
         super(ServerThread, self).__init__(parent)
@@ -69,24 +61,24 @@ class ServerThread(QThread):
         try:
             self.connection, self.address = self.listen()
             self.connection.settimeout(300)
-            self.log_message.emit(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] is authenticating.'))
+            self.log_signal.emit(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] is authenticating.'))
             password = self.recv()
             if password is None:
                 raise RestartServer
             password_hash = hashlib.sha256(password.encode()).hexdigest()
             if password_hash == self.get_password():
                 self.send(True)
-                self.log_message.emit(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] connected.'))
+                self.log_signal.emit(self.log(f'[+] [{self.get_time()}] [{self.address[0]}] connected.'))
             else:
-                self.log_message.emit(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] authentication failed.'))
+                self.log_signal.emit(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] authentication failed.'))
                 self.send(False)
                 raise RestartServer
             while True:
                 command = self.recv().split(' ')
-                self.log_message.emit(
+                self.log_signal.emit(
                     self.log(f"[-] [{self.get_time()}] [{self.address[0]}] command: {' '.join(command)}"))
                 if command[0] == 'exit':  # 10
-                    self.log_message.emit(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
+                    self.log_signal.emit(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
                     raise RestartServer
                 elif command[0] == 'prompt' and len(command) == 1:  # 9
                     self.send(f'{getpass.getuser()}@{socket.gethostname()}:{os.getcwd()}')
@@ -116,7 +108,7 @@ class ServerThread(QThread):
                     command_result = self.execute_system_command(command)
                     self.send(command_result)
         except ConnectionResetError:
-            self.log_message.emit(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
+            self.log_signal.emit(self.log(f'[-] [{self.get_time()}] [{self.address[0]}] disconnected.'))
             self.run()
         except RestartServer:
             self.run()
@@ -130,7 +122,7 @@ class ServerThread(QThread):
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind((ip, port))
         server.listen(0)
-        self.log_message.emit(self.log(f'[+] [{self.get_time()}] [{ip}] listening...'))
+        self.log_signal.emit(self.log(f'[+] [{self.get_time()}] [{ip}] listening...'))
         connection, address = server.accept()
         return connection, address
 
@@ -153,20 +145,19 @@ class ServerThread(QThread):
         return result
 
     @staticmethod
-    def clear():
-        return os.system('cls' if os.name == 'nt' else 'clear')
-
-    def pwd(self):
+    def pwd():
         return os.getcwd()
 
-    def cd(self, path):
+    @staticmethod
+    def cd(path):
         try:
             os.chdir(path)
             return ''
         except FileNotFoundError:
             return f'cd: {path}: No such file or directory'
 
-    def ls(self):
+    @staticmethod
+    def ls():
         return '  '.join(os.listdir())
 
     @staticmethod
@@ -188,7 +179,8 @@ class ServerThread(QThread):
             file.write(log_message + '\n')
         return log_message
 
-    def read_file(self, path):
+    @staticmethod
+    def read_file(path):
         with open(path, 'rb') as file:
             return base64.b64encode(file.read()).decode(FORMAT)
 
@@ -199,7 +191,8 @@ class ServerThread(QThread):
             file.write(base64.b64decode(content))
             return f'[+] {filename} uploaded successfully.'
 
-    def rename_file(self, file_name):
+    @staticmethod
+    def rename_file(file_name):
         filename, extension = os.path.splitext(file_name)
         counter = 1
         while os.path.exists(file_name):
@@ -207,7 +200,8 @@ class ServerThread(QThread):
             counter += 1
         return file_name
 
-    def downloadable(self, file_path):
+    @staticmethod
+    def downloadable(file_path):
         if os.path.isfile(file_path):
             return True
         if os.path.isfile(os.path.join(os.path.dirname(__file__), file_path)):

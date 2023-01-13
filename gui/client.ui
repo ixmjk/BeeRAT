@@ -146,6 +146,9 @@ QPushButton:disabled {
    </item>
    <item row="2" column="0" colspan="3">
     <widget class="QLineEdit" name="le">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
      <property name="font">
       <font>
        <family>Consolas</family>
