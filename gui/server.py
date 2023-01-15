@@ -4,6 +4,7 @@ import getpass
 import hashlib
 import json
 import os
+import pathlib
 import socket
 import subprocess
 from typing import Any
@@ -102,9 +103,9 @@ class ServerThread(QThread):
         """the constructor for ServerThread class
         """
         super(ServerThread, self).__init__(parent)
-        self.script_location = os.path.dirname(__file__)
-        self.password_file = os.path.join(os.path.dirname(__file__), 'BeeRAT-password.txt')
-        self.log_file = os.path.join(os.path.dirname(__file__), 'BeeRAT-log.txt')
+        self.script_location = pathlib.Path.home()  # save password and log file to user home directory
+        self.password_file = os.path.join(self.script_location, 'BeeRAT-password.txt')
+        self.log_file = os.path.join(self.script_location, 'BeeRAT-log.txt')
 
     def run(self) -> None:
         """this method executes when ServerThread object's start method is called

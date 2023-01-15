@@ -230,7 +230,7 @@ def main() -> None:
             elif command[0] == 'clear' and len(command) == 1:
                 Client.clear()
             elif command[0] == 'exit' and len(command) == 1:
-                exit()
+                os._exit(0)
             elif command[0] == 'connect':
                 ip = command[1]
                 client = Client(ip)

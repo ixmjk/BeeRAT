@@ -20,7 +20,7 @@ class Client(qtw.QWidget):
         """the constructor for Client gui class
         """
         super().__init__(*args, **kwargs)
-        self.script_location = os.path.dirname(__file__)
+        self.script_location = os.path.dirname(__file__)  # ui file directory
         self.ui_file = 'client.ui'
         self.ui = loadUi(os.path.join(self.script_location, self.ui_file), self)
         self.ui.pb.clicked.connect(self.connect)
@@ -186,7 +186,6 @@ class ConnectThread(QThread):
             password (str): server password
         """
         super(ConnectThread, self).__init__(parent)
-        self.script_location = os.path.dirname(__file__)
         self.ip = ip
         self.password = password
 
@@ -411,7 +410,7 @@ class EnterThread(QThread):
             return f'[+] {filename} downloaded successfully.'
 
     def uploadable(self, file_path: str) -> bool:
-        """check if file is uploadable
+        """check if file is uploadable to server
 
         Args:
             file_path (str): path to the file

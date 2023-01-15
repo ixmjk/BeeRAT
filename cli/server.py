@@ -4,6 +4,7 @@ import getpass
 import hashlib
 import json
 import os
+import pathlib
 import socket
 import subprocess
 from typing import Any
@@ -23,7 +24,7 @@ class Server:
     def __init__(self) -> None:
         """the constructor for Server class
         """
-        self.script_location = os.path.dirname(__file__)
+        self.script_location = pathlib.Path.home()
         self.password_file = os.path.join(self.script_location, 'BeeRAT-password.txt')
         self.log_file = os.path.join(self.script_location, 'BeeRAT-log.txt')
 
@@ -330,7 +331,7 @@ def main() -> None:
             elif command[0] == 'clear' and len(command) == 1:
                 Server.clear()
             elif command[0] == 'exit' and len(command) == 1:
-                exit()
+                os._exit(0)
             elif command[0] == 'passwd' and len(command) == 1:
                 new_password = getpass.getpass('New Password: ')
                 renew_password = getpass.getpass('Retype new Password: ')
