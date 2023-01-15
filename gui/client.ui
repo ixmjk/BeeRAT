@@ -50,7 +50,7 @@ QLineEdit:disabled {
 }</string>
      </property>
      <property name="text">
-      <string>192.168.56.1</string>
+      <string/>
      </property>
      <property name="placeholderText">
       <string>IP</string>
@@ -80,7 +80,7 @@ QLineEdit:disabled {
 }</string>
      </property>
      <property name="text">
-      <string>password</string>
+      <string/>
      </property>
      <property name="echoMode">
       <enum>QLineEdit::Password</enum>
